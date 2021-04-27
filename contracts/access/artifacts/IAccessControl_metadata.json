@@ -1,0 +1,176 @@
+{
+	"compiler": {
+		"version": "0.8.1+commit.df193b15"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [
+					{
+						"internalType": "bytes32",
+						"name": "role",
+						"type": "bytes32"
+					}
+				],
+				"name": "getRoleAdmin",
+				"outputs": [
+					{
+						"internalType": "bytes32",
+						"name": "",
+						"type": "bytes32"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes32",
+						"name": "role",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "grantRole",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes32",
+						"name": "role",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "hasRole",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes32",
+						"name": "role",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "renounceRole",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes32",
+						"name": "role",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "revokeRole",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"details": "External interface of AccessControl declared to support ERC165 detection.",
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"contracts/access/AccessControl.sol": "IAccessControl"
+		},
+		"evmVersion": "istanbul",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"contracts/access/AccessControl.sol": {
+			"keccak256": "0x4d5e206fc30bf56b6351da2a28ca3f62dadcbad653119680a9296a9d27957729",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://0ea2b90ec1b1f1dfbb13e642b10b2529b2b349491c1a4c1223c81ac1d50971fb",
+				"dweb:/ipfs/QmQuXjuSDb2Azf2nm6kUFZU39m444gD1B7Vyydnr9FEzr5"
+			]
+		},
+		"contracts/utils/Context.sol": {
+			"keccak256": "0x9c22fa9375b8b5c840785989cefb0fb93bcef5acf944de3cada11eea1846668b",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://fec64cd92f82a727d6029d5c974fc10fae5e5de581a3e1716c0fbea77848440d",
+				"dweb:/ipfs/QmcP1Y9S8XoBuncvBYBZugpy2oyCZT7iqNtVyjFmozkNJh"
+			]
+		},
+		"contracts/utils/Strings.sol": {
+			"keccak256": "0x01ecb0d2cd3bc253110274a84b73e4329dc10c58c81bce4715a156cfd35fc90d",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://425cd9c9eb161b8aec34890085e7ee2be6e6f5d2a851415cd59d8a2171a13db1",
+				"dweb:/ipfs/QmVcSqgXHNBch5SBgcRgxh7AsFtHPP6vBK13VrBw14pUDX"
+			]
+		},
+		"contracts/utils/introspection/ERC165.sol": {
+			"keccak256": "0x6daeb7a509fb10e5e8a52e1f2bbcf749ada25fc50deccfc82cbabeccc2bd644e",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://a0dc76637b0377f014d6aebdc215e6cdcf6d5d74cca72661db0d72d50eb51ca3",
+				"dweb:/ipfs/QmZM4c66SX6jLACEFJowRxZ7vgPNRD6eNm8kzuof16RZd5"
+			]
+		},
+		"contracts/utils/introspection/IERC165.sol": {
+			"keccak256": "0xfc0296945555d45d710d7a0ab5cf09b90541ebbf92685780c70a6607d10e784a",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://324027b4c88ab64f9a4cb8837b794a52785c1b1c2f2875773ac5ce69cde442bf",
+				"dweb:/ipfs/QmZDtbDjULZUNtq1z2RGNrBJw5WUtQzPHUFxTQxqzEq3om"
+			]
+		}
+	},
+	"version": 1
+}
