@@ -2,16 +2,13 @@
 
 pragma solidity ^0.8.0;
 
-import "../ERC721.sol";
-import "../IERC721.sol";
+import "../extensions/ERC721WithAccessControl.sol";
 import "../utils/WithdrawERC721.sol";
-import "../../ERC20/IERC20.sol";
 import "../../ERC20/utils/WithdrawERC20.sol";
-import "../../ERC20/extensions/OwnableERC20.sol";
-import "../../../access/Ownable.sol";
+import "../../ERC20/extensions/ERC20WithAccessControl.sol";
 import "../../../access/Withdraw.sol";
 
-contract MarketableERC721 is ERC721, Ownable, Withdraw, WithdrawERC20, WithdrawERC721{
+contract ERC721Market is WithdrawERC721, WithdrawERC20, Withdraw, IDelegateERC721Owner{
     using Address for address;
     using Address for address payable;
     
@@ -23,17 +20,45 @@ contract MarketableERC721 is ERC721, Ownable, Withdraw, WithdrawERC20, WithdrawE
         uint256 tokenId;
     }
     
-    OwnableERC20 fungibleToken;
+    IERC20WithAccessControl fungibleToken;
+    IERC721WithAccessControl unfungibleToken;
     
     uint256 nextId = 1;
-    mapping(uint256 => Order) orders;
+    mapping(uint256 => Order) public orders;
     
     uint256 private _reservedAmount = 0;
     uint256 private _reservedERC20;
     mapping(uint256 => address) _reservedToken;
     
-    constructor (string memory name_, string memory symbol_, address tokenAdress) ERC721(name_, symbol_){
-        fungibleToken = OwnableERC20(tokenAdress);
+    constructor (address fungibleTokenAddress, address unfungibleTokenAddress){
+        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        grantRole(withdrawRole, _msgSender());
+        grantRole(withdrawERC20Role, _msgSender());
+        grantRole(withdrawERC721Role, _msgSender());
+        fungibleToken = IERC20WithAccessControl(fungibleTokenAddress);
+        require(fungibleToken.supportsInterface(type(IERC20WithAccessControl).interfaceId));
+        unfungibleToken = IERC721WithAccessControl(unfungibleTokenAddress);
+        require(unfungibleToken.supportsInterface(type(IERC721WithAccessControl).interfaceId));
+    }
+    
+    function buyWithToken(uint256 orderId) external{
+        require(orders[orderId].withToken);
+        _buy(orderId);
+    }
+    
+    function buy(uint256 orderId) payable external{
+        require(!orders[orderId].withToken);
+        _buy(orderId);
+    }
+    
+    function sellWithToken(uint256 orderId) external{
+        require(orders[orderId].withToken);
+        _sell(orderId);
+    }
+    
+    function sell(uint256 orderId) external{
+        require(!orders[orderId].withToken);
+        _sell(orderId);
     }
     
     function placeSellOrder(uint256 tokenId, uint256 amount) public returns(uint256){
@@ -44,11 +69,11 @@ contract MarketableERC721 is ERC721, Ownable, Withdraw, WithdrawERC20, WithdrawE
         return _placeOrder(true, true, amount, tokenId);
     }
     
-    function placeBuyOrder(uint256 tokenId, uint256 amount) public returns(uint256){
+    function placeBuyOrder(uint256 tokenId, uint256 amount) payable public returns(uint256){
         return _placeOrder(false, false, amount, tokenId);
     }
     
-    function placeTokenbuyOrder(uint256 tokenId, uint256 amount) public returns(uint256){
+    function placeTokenBuyOrder(uint256 tokenId, uint256 amount) public returns(uint256){
         return _placeOrder(false, true, amount, tokenId);
     }
     
@@ -79,7 +104,7 @@ contract MarketableERC721 is ERC721, Ownable, Withdraw, WithdrawERC20, WithdrawE
     }
     
     function reservedERC721(IERC721 token, uint256 id) public override view returns(bool){
-        if(address(token) == address(this)){
+        if(address(token) == address(unfungibleToken)){
             return _reservedToken[id] != address(0);
         }
         else {
@@ -91,7 +116,7 @@ contract MarketableERC721 is ERC721, Ownable, Withdraw, WithdrawERC20, WithdrawE
         require(orders[orderId].owner != address(0));
         require(!orders[orderId].sell);
         
-        _safeTransfer(_msgSender(), orders[orderId].owner, orders[orderId].tokenId, "");
+        unfungibleToken.safeTransfer(_msgSender(), orders[orderId].owner, orders[orderId].tokenId, "");
         if(orders[orderId].withToken){
             fungibleToken.transfer(_msgSender(), orders[orderId].amount - orders[orderId].amount / 11);
             _reservedERC20 -= orders[orderId].amount;
@@ -107,13 +132,13 @@ contract MarketableERC721 is ERC721, Ownable, Withdraw, WithdrawERC20, WithdrawE
         require(orders[orderId].owner != address(0));
         require(orders[orderId].sell);
             
-        _safeTransfer(orders[orderId].owner, _msgSender(), orders[orderId].tokenId, "");
+        unfungibleToken.safeTransfer(address(this), _msgSender(), orders[orderId].tokenId, "");
         delete _reservedToken[orders[orderId].tokenId];
         if(orders[orderId].withToken){
             if(orders[orderId].amount / 10 > 0){
-                fungibleToken.forceTransfer(_msgSender(), address(this), orders[orderId].amount / 10);
+                fungibleToken.transfer(_msgSender(), address(this), orders[orderId].amount / 10);
             }
-            fungibleToken.forceTransfer(_msgSender(), orders[orderId].owner, orders[orderId].amount);
+            fungibleToken.transfer(_msgSender(), orders[orderId].owner, orders[orderId].amount);
         }
         else{
             require(msg.value == orders[orderId].amount + orders[orderId].amount / 10);
@@ -125,12 +150,12 @@ contract MarketableERC721 is ERC721, Ownable, Withdraw, WithdrawERC20, WithdrawE
     function _removeOrder(uint256 orderId, bool refund) private{
         if(refund){
             if (orders[orderId].sell){
-                _safeTransfer(address(this), orders[orderId].owner, orders[orderId].tokenId, "");
+                unfungibleToken.safeTransfer(address(this), orders[orderId].owner, orders[orderId].tokenId, "");
                 delete _reservedToken[orders[orderId].tokenId];
             }
             else {
                 if(orders[orderId].withToken){
-                    fungibleToken.forceTransfer(address(this), orders[orderId].owner, orders[orderId].amount);
+                    fungibleToken.transfer(address(this), orders[orderId].owner, orders[orderId].amount);
                     _reservedERC20 -= orders[orderId].amount;
                 }
                 else{
@@ -142,17 +167,17 @@ contract MarketableERC721 is ERC721, Ownable, Withdraw, WithdrawERC20, WithdrawE
         delete orders[orderId];
     }
     
-    function _placeOrder(bool sell, bool withToken, uint256 amount, uint256 tokenId) private returns(uint256){
+    function _placeOrder(bool iSell, bool withToken, uint256 amount, uint256 tokenId) private returns(uint256){
         require(amount > 0);
-        orders[nextId++] = Order(sell, _msgSender(), withToken, amount, tokenId);
-        if(sell){
+        orders[nextId++] = Order(iSell, _msgSender(), withToken, amount, tokenId);
+        if(iSell){
             require(_reservedToken[tokenId] == address(0));
-            _safeTransfer(_msgSender(), address(this), tokenId, "");
+            unfungibleToken.safeTransfer(_msgSender(), address(this), tokenId, "");
             _reservedToken[tokenId] = _msgSender();
         }
         else{
             if(withToken){
-                fungibleToken.forceTransfer(_msgSender(), address(this), amount);
+                fungibleToken.transfer(_msgSender(), address(this), amount);
                 _reservedERC20 += amount;
             }
             else{
@@ -197,6 +222,19 @@ contract MarketableERC721 is ERC721, Ownable, Withdraw, WithdrawERC20, WithdrawE
             }
         }
         return results;
+    }
+    
+     function ownerOf(address tokenAddress, uint256 tokenId) external view override returns(address){
+         if(tokenAddress == address(unfungibleToken)){
+            return _reservedToken[tokenId];
+         }
+         else {
+             return address(0);
+         }
+     }
+    
+    function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControl, IERC165) returns (bool) {
+        return AccessControl.supportsInterface(interfaceId) || interfaceId == type(IDelegateERC721Owner).interfaceId;
     }
     
 }

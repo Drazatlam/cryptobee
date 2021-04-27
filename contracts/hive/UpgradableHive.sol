@@ -11,8 +11,8 @@ contract UpgradableHive is Hive{
     mapping(address => uint256) public partipationToEnlarge;
     
     
-    constructor(address honeyAdress_, string[] memory firstBeesName_, uint128 hiveSize_, uint256 baseClaimPrice_, uint256 honeyCooldown_, uint256 enlargeBasePrice_)
-    Hive(honeyAdress_, firstBeesName_, hiveSize_, baseClaimPrice_, honeyCooldown_){
+    constructor(uint256 enlargeBasePrice_)
+    Hive(){
         require(enlargeBasePrice_ > 0);
         enlargeBasePrice = enlargeBasePrice_;
     }
@@ -27,14 +27,18 @@ contract UpgradableHive is Hive{
             amount = remaining;
         }
         require(amount > 0);
-        honey.forceTransfer(_msgSender(),address(this), amount);
+        honey.transfer(_msgSender(),address(this), amount);
         honey.burn(address(this), amount - amount / 10);
         collectedAmountForEnlarge += amount;
         partipantToEnlarge.push(_msgSender());
         partipationToEnlarge[_msgSender()] += amount;
     }
     
-    function enlarge(string[] memory beeNames) public onlyOwner{
+    function forceEnlarge(string[] memory beeNames) external onlyRole(DEFAULT_ADMIN_ROLE){
+        _enlargeHive(hiveSize + 1, beeNames, 0);
+    }
+    
+    function enlarge(string[] memory beeNames) external onlyRole(DEFAULT_ADMIN_ROLE){
         require(collectedAmountForEnlarge == enlargePrice());
         _enlargeHive(hiveSize + 1, beeNames, 0);
         collectedAmountForEnlarge = 0;

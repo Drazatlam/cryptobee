@@ -2,8 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import "../token/ERC20/extensions/MarketableERC20.sol";
+import "../token/ERC20/extensions/ERC20WithAccessControl.sol";
 
-contract Honey is MarketableERC20{
-    constructor() MarketableERC20("Honey", "HNY"){}
+contract Honey is ERC20WithAccessControl{
+    constructor() ERC20WithAccessControl("Honey", "HNY"){}
+    
+    function isHoney() external pure returns(bool){
+        return true;
+    }
 }

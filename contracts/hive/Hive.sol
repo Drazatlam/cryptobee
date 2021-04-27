@@ -2,10 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-import "../token/ERC721/extensions/MarketableERC721.sol";
+import "../token/ERC721/extensions/ERC721WithAccessControl.sol";
 import "./Honey.sol";
+import "../token/ERC721/utils/WithdrawERC721.sol";
 
-contract Hive is MarketableERC721{
+contract Hive is ERC721WithAccessControl, WithdrawERC721{
     using Address for address;
     using Address for address payable;
     
@@ -21,8 +22,12 @@ contract Hive is MarketableERC721{
     uint256 public honeyTime;
     uint256 public honeyCooldown;
     
-    constructor(address honeyAdress_, string[] memory firstBeesName_, uint128 hiveSize_, uint256 baseClaimPrice_, uint256 honeyCooldown_) MarketableERC721("Bee", "BEE", honeyAdress_){
+    constructor() ERC721WithAccessControl("Bee", "BEE"){
+    }
+    
+    function setup(address honeyAdress_, string[] memory firstBeesName_, uint128 hiveSize_, uint256 baseClaimPrice_, uint256 honeyCooldown_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         honey = Honey(honeyAdress_);
+        require(honey.isHoney());
         honeyCooldown = honeyCooldown_;
         honeyTime = (block.timestamp / honeyCooldown) * honeyCooldown + honeyCooldown;
         baseClaimPrice = baseClaimPrice_;
@@ -41,22 +46,7 @@ contract Hive is MarketableERC721{
     }
     
     function claimableBee() public view returns(uint256[] memory){
-        uint256[] memory ownedBees = allBee(address(this));
-        uint256 count = 0;
-        for(uint256 i = 0; i < ownedBees.length; i++){
-            if(_reservedToken[ownedBees[i]] == address(0)){
-                count++;
-            }
-        }
-        
-        uint256[] memory result = new uint256[](count);
-        count = 0;
-        for(uint256 i = 0; i < ownedBees.length; i++){
-            if(_reservedToken[ownedBees[i]] == address(0)){
-                result[count++] = ownedBees[i];
-            }
-        }
-        return result;
+        return allBee(address(this));
     }
     
     function allBee() public view returns(uint256[] memory){
@@ -143,7 +133,6 @@ contract Hive is MarketableERC721{
     
     function _claimBeeFor(uint256 beeId, address to) internal{
         require(ownerOf(beeId) == address(this));
-        require(_reservedToken[beeId] == address(0));
         (uint256 factor, uint256 price) = beePriceInfo(beeId);
         require(msg.value >= price);
         if(msg.value > price){
@@ -173,12 +162,15 @@ contract Hive is MarketableERC721{
         if(!_exists(beeId)){
             return address(0);
         }
-        if(ownerOf(beeId) == address(this)){
-            return _reservedToken[beeId];
+        address ownerOfBee = ownerOf(beeId);
+        if(_delegateOwners[ownerOf(beeId)]){
+            address owner = IDelegateERC721Owner(ownerOfBee).ownerOf(address(this), beeId);
+            if(owner != address(0)){
+                return owner;
+            }
         }
-        else{
-            return ownerOf(beeId);
-        }
+        return ownerOfBee;
+        
     }
     
     function _dispatchHoney() internal virtual returns(uint256){
@@ -196,16 +188,12 @@ contract Hive is MarketableERC721{
         }
         return total;
     }
-    
-    function subWithdraw() public virtual override view returns(Withdraw[] memory){
-        Withdraw[] memory subs =  new Withdraw[](1);
-        subs[0] = Withdraw(honey);
-        return subs;
+
+    function reservedERC721(IERC721, uint256) public virtual override view returns(bool){
+        return false;
     }
-    
-    function subWithdrawERC20() public virtual override view returns(WithdrawERC20[] memory){
-        WithdrawERC20[] memory subs =  new WithdrawERC20[](1);
-        subs[0] = WithdrawERC20(honey);
-        return subs;
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721WithAccessControl, AccessControl) returns (bool) {
+        return ERC721WithAccessControl.supportsInterface(interfaceId) || AccessControl.supportsInterface(interfaceId);
     }
 }

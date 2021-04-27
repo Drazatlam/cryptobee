@@ -2,24 +2,34 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
-import "./Ownable.sol";
+import "./AccessControl.sol";
 import "../utils/Address.sol";
 
 
-abstract contract Withdraw is Ownable{
+abstract contract Withdraw is AccessControl{
     using Address for address;
     using Address for address payable;
     
-    function withdrawAll() external onlyOwner returns(uint256){
-        Withdraw[] memory subs = subWithdraw();
-        for(uint256 i = 0; i < subs.length; i++){
-            subs[i].withdrawAll();
-        }
-        return _withdraw(2**256-1);
+    bytes32 public constant withdrawRole =  keccak256("WithdrawWithAccessControl");
+    
+    function withdrawAll() external onlyRole(withdrawRole) returns(uint256){
+        uint256 value = withdrawAllUnckecked();
+        require(value > 0);
+        return value;
     }
     
-    function withdraw(uint256 maxAmount) external onlyOwner returns(uint256){
-        return _withdraw(maxAmount);
+    function withdrawAllUnckecked() public onlyRole(withdrawRole) returns(uint256){
+        Withdraw[] memory subs = subWithdraw();
+        for(uint256 i = 0; i < subs.length; i++){
+            subs[i].withdrawAllUnckecked();
+        }
+        return _withdraw(type(uint256).max);
+    }
+    
+    function withdraw(uint256 maxAmount) external onlyRole(withdrawRole) returns(uint256){
+        uint256 value = _withdraw(maxAmount);
+        require(value > 0);
+        return value;
     }
     
     function subWithdraw() public virtual view returns(Withdraw[] memory){
@@ -36,7 +46,7 @@ abstract contract Withdraw is Ownable{
             amount = maxAmount;
         }
         if(amount > 0){
-            payable(owner()).sendValue(amount);
+            payable(_msgSender()).sendValue(amount);
         }
         return amount;
     }

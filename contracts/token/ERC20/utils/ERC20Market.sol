@@ -2,10 +2,10 @@
 
 pragma solidity ^0.8.0;
 import "../extensions/ERC20WithAccessControl.sol";
-import "./WithdrawERC20WithAccessControl.sol";
-import "../../../access/WithdrawWithAccessControl.sol";
+import "./WithdrawERC20.sol";
+import "../../../access/Withdraw.sol";
 
-contract ERC20Market is WithdrawERC20WithAccessControl, WithdrawWithAccessControl{
+contract ERC20Market is WithdrawERC20, Withdraw{
     using Address for address;
     using Address for address payable;
     
@@ -56,29 +56,15 @@ contract ERC20Market is WithdrawERC20WithAccessControl, WithdrawWithAccessContro
     function placeSellOrder(uint256 amount, uint256 price) public returns(uint256){
         require(amount > 0);
         require(price > 0);
-        (, uint256 amountSold) = _sell(amount, price);
-        amount -= amountSold;
-        if(amount > 0){
-            tokenContract.transfer(_msgSender(),address(this), amount);
-            _reservedTokenAmount += amount;
-            return _putOrder(amount, price, true);
-        }
-        return 0;
+        tokenContract.transfer(_msgSender(), address(this), amount);
+        return _putOrder(amount, price, true);
     }
     
     function placeBuyOrder(uint256 amount, uint256 price) public payable returns(uint256){
         require(amount > 0);
         require(price > 0);
         require(msg.value == amount * price);
-        (uint256 amountBuyed, uint256 valueBuyed) = _buyAmount(amount, price, msg.value);
-        amount -= amountBuyed;
-        payable(_msgSender()).sendValue(msg.value - valueBuyed - amount * price);
-        if(amount > 0){
-            _reservedAmount += amount * price;
-            return _putOrder(amount, price, false);
-        }
-        
-        return 0;
+        return _putOrder(amount, price, false);
     }
     
     function removeOrder(uint256 orderId) public{
@@ -93,21 +79,27 @@ contract ERC20Market is WithdrawERC20WithAccessControl, WithdrawWithAccessContro
         if(forceAll){
             require(amountSold == amount);
         }
-        return (valueSold, amountSold);
+        payable(_msgSender()).sendValue(valueSold - valueSold / 11);
+        return (valueSold - valueSold / 11, amountSold);
     }
     
     function buyAmount(uint256 amount, uint256 maxPrice, bool forceAll) public payable returns(uint256, uint256){
-        (uint256 amountBuyed, uint256 valueBuyed) = _buyAmount(amount, maxPrice, msg.value);
+        (uint256 amountBuyed, uint256 valueBuyed) = _buyAmount(amount + amount/10, maxPrice, msg.value);
         require(amountBuyed > 0);
         if(forceAll){
-            require(amountBuyed == amountBuyed);
+            require(amountBuyed == amount + amount/10);
         }
+        tokenContract.transfer(address(this), _msgSender(), amountBuyed - amountBuyed/11);
         payable(_msgSender()).sendValue(msg.value - valueBuyed);
-        return (amountBuyed, valueBuyed);
+        return (amountBuyed - amountBuyed/11, valueBuyed);
     }
     
     function buy(uint256 maxPrice) public payable returns(uint256, uint256){
-        return buyAmount(2**256-1, maxPrice, false);
+        (uint256 amountBuyed, uint256 valueBuyed) = _buyAmount(type(uint256).max, maxPrice, msg.value);
+        require(amountBuyed > 0);
+        tokenContract.transfer(address(this), _msgSender(), amountBuyed - amountBuyed/11);
+        payable(_msgSender()).sendValue(msg.value - valueBuyed);
+        return (amountBuyed - amountBuyed/11, valueBuyed);
     }
     
     function reservedAmount() public override view returns(uint256){
@@ -115,7 +107,7 @@ contract ERC20Market is WithdrawERC20WithAccessControl, WithdrawWithAccessContro
     }
     
     function reservedERC20Amount(IERC20 token) public override view returns(uint256){
-        if(address(token) == address(this)){
+        if(address(token) == address(tokenContract)){
             return _reservedTokenAmount;
         }
         else{
@@ -179,6 +171,13 @@ contract ERC20Market is WithdrawERC20WithAccessControl, WithdrawWithAccessContro
             orders[current].previous = id;
         }
         
+        if(isSell){
+            _reservedTokenAmount += amount;
+        }
+        else{
+            _reservedAmount += amount * price;
+        }
+        
         return id;
         
     }
@@ -239,16 +238,14 @@ contract ERC20Market is WithdrawERC20WithAccessControl, WithdrawWithAccessContro
             }
             current = currentOrder.next;
         }
-        
         _reservedAmount -= total;
-        payable(_msgSender()).sendValue(total-(total/11));
-        return (total-(total/11),amount - remainingAmount);
+        return (total,amount - remainingAmount);
     }
     
     function _buyAmount(uint256 amount, uint256 maxPrice, uint256 availableValue) private returns(uint256,uint256){
         require(amount > 0);
         require(maxPrice > 0);
-        uint256 remainingAmount = amount + amount / 10;
+        uint256 remainingAmount = amount;
         uint256 remainingValue = availableValue;
         uint256 current = firstSellId;
         while(current !=0 && remainingAmount > 0){
@@ -278,11 +275,10 @@ contract ERC20Market is WithdrawERC20WithAccessControl, WithdrawWithAccessContro
             current = currentOrder.next;
         }
         
-        uint256 total = amount + amount / 10 - remainingAmount;
+        uint256 total = amount - remainingAmount;
         
         _reservedTokenAmount -= total;
-        tokenContract.transfer(address(this), _msgSender(), total-(total/11));
-        return (total-(total/11), availableValue - remainingValue);
+        return (total, availableValue - remainingValue);
         
     }
 }
