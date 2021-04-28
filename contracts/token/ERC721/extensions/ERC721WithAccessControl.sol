@@ -32,7 +32,7 @@ contract ERC721WithAccessControl is ERC721, AccessControl, IERC721WithAccessCont
     mapping(address => bool) internal _delegateOwners;
     
     
-    function mint(address to, uint256 tokenId) external override onlyRole(mintRole){
+    function mint(address to, uint256 tokenId) external virtual override onlyRole(mintRole){
         _mint(to, tokenId);
     }
     

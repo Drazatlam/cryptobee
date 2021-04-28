@@ -11,8 +11,8 @@ contract UpgradableHive is Hive{
     mapping(address => uint256) public partipationToEnlarge;
     
     
-    constructor(uint256 enlargeBasePrice_)
-    Hive(){
+    constructor(address beeAdress_, address honeyAdress_, uint256 baseClaimPrice_, uint256 honeyCooldown_, uint256 enlargeBasePrice_)
+    Hive(beeAdress_, honeyAdress_, baseClaimPrice_, honeyCooldown_){
         require(enlargeBasePrice_ > 0);
         enlargeBasePrice = enlargeBasePrice_;
     }
@@ -34,19 +34,19 @@ contract UpgradableHive is Hive{
         partipationToEnlarge[_msgSender()] += amount;
     }
     
-    function forceEnlarge(string[] memory beeNames) external onlyRole(DEFAULT_ADMIN_ROLE){
-        _enlargeHive(hiveSize + 1, beeNames, 0);
+    function forceEnlargeHive() public virtual onlyRole(DEFAULT_ADMIN_ROLE){
+        require(canEnlargeHive());
+        hiveSize++;
     }
     
-    function enlarge(string[] memory beeNames) external onlyRole(DEFAULT_ADMIN_ROLE){
+    function enlargeHive() external virtual override onlyRole(DEFAULT_ADMIN_ROLE){
         require(collectedAmountForEnlarge == enlargePrice());
-        _enlargeHive(hiveSize + 1, beeNames, 0);
+        forceEnlargeHive();
         collectedAmountForEnlarge = 0;
         for(uint256 i = 0; i < partipantToEnlarge.length; i++){
             delete partipationToEnlarge[partipantToEnlarge[i]];
         }
         delete partipantToEnlarge;
-        
     }
     
 }
